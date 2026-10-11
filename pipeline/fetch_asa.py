@@ -1,6 +1,6 @@
 """Fetch MLS player data from the American Soccer Analysis public API into data/raw/ (cached, not committed).
 
-Seasons 2021-2026, regular season + playoffs combined, one row per player-season (not split by team).
+Seasons 2015-2026, regular season + playoffs combined, one row per player-season (not split by team).
 Usage: python3 pipeline/fetch_asa.py [--refresh]
 """
 import json, sys, time, urllib.parse, urllib.request
@@ -8,7 +8,7 @@ from pathlib import Path
 
 API = "https://app.americansocceranalysis.com/api/v1/mls"
 RAW = Path(__file__).resolve().parents[1] / "data" / "raw"
-SEASONS = list(range(2021, 2027))
+SEASONS = list(range(2015, 2027))
 REFRESH = "--refresh" in sys.argv
 
 

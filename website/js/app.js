@@ -57,15 +57,25 @@ const meter = (p, { lo = null, hi = null } = {}) => {
   const t = tier(p), tl = tier(lo), th = tier(hi);
   return `<span class="meter">${[1, 2, 3, 4, 5].map((i) => `<i class="${i <= t ? `on l${t}` : lo != null && i >= tl && i <= th ? "range" : ""}"></i>`).join("")}</span>`;
 };
+const rt = (v, cls = "") => `<b class="rt l${tier(v)} ${cls}">${v ?? "–"}</b>`;
+const SEASON = () => META.season;
+// current season + up to three projected seasons, as exact ratings (0-100 vs same position group)
+function seasonStrip(p, big = false) {
+  const cells = [{ y: SEASON(), v: p.imp, now: true }, ...(p.fut ?? []).map((f) => ({ y: f.y, v: f.p, lo: f.lo, hi: f.hi }))];
+  const html = cells.map((c) => `<div class="sz${c.now ? " now" : ""}" data-tip="${c.y}${c.now ? " (this season)" : " projection"}: rating ${c.v ?? "n/a"}${c.lo != null ? `, 80% likely ${c.lo}–${c.hi}` : ""} · ${TIERS[tier(c.v)] ?? "n/a"} · better than ${c.v ?? "?"}% of ${p.g.toLowerCase()}s">
+    <span class="yr">${c.y}</span>${rt(c.v)}<small>${c.now ? "now" : `${c.lo}–${c.hi}`}</small></div>`).join("");
+  const na = p.fut ? "" : `<div class="sz na"><small>No projection for goalkeepers yet</small></div>`;
+  return `<div class="seasons${big ? " big" : ""}">${html}${na}</div>`;
+}
 const confDots = (min) => `<span class="conf" data-tip="${min.toLocaleString()} minutes: ${CONF_WORDS[conf(min)]}">${[1, 2, 3].map((i) => `<i class="${i <= conf(min) ? "on" : ""}"></i>`).join("")}</span>`;
 
 function strengths(p) {
   const e = Object.entries(p.sk).filter(([, v]) => v != null).sort((a, b) => b[1] - a[1]);
   const top = e.filter(([, v]) => v >= 70).slice(0, 3);
   const weak = e.filter(([, v]) => v < 20).slice(-1);
-  const li = top.map(([k, v]) => `<li data-tip="${esc(k)}: better than ${v}% of ${p.g.toLowerCase()}s"><b class="w l${tier(v)}">${TIERS[tier(v)]}</b> ${esc(k.toLowerCase())}</li>`);
+  const li = top.map(([k, v]) => `<li data-tip="${esc(k)}: ${TIERS[tier(v)]}, better than ${v}% of ${p.g.toLowerCase()}s">${rt(v)} ${esc(k)}</li>`);
   if (!li.length) li.push(`<li class="weak">No standout skill yet</li>`);
-  weak.forEach(([k, v]) => li.push(`<li class="weak" data-tip="${esc(k)}: better than ${v}% of ${p.g.toLowerCase()}s">Weak ${esc(k.toLowerCase())}</li>`));
+  weak.forEach(([k, v]) => li.push(`<li class="weak" data-tip="${esc(k)}: weak, better than ${v}% of ${p.g.toLowerCase()}s">${rt(v)} ${esc(k)}</li>`));
   return `<ul class="strengths">${li.join("")}</ul>`;
 }
 
@@ -79,10 +89,7 @@ function card(p) {
       <span class="pos ${p.g}" data-tip="${POS_NAME[p.pos]}">${p.pos}</span></div>
     <div class="role">${esc(p.role ?? POS_NAME[p.pos])}</div>
     <div class="shape">${radarSVG([p])}${strengths(p)}</div>
-    <div class="meters">
-      <span>Now</span><span data-tip="Overall impact this season: ${TIERS[tier(p.imp)] ?? "n/a"} (better than ${p.imp ?? "?"}% of ${p.g.toLowerCase()}s)">${meter(p.imp)}</span>
-      <span>Next year</span><span data-tip="${p.proj == null ? "No projection for goalkeepers" : `Projected: ${TIERS[tier(p.proj)]}, likely range ${TIERS[tier(p.pLo)]} to ${TIERS[tier(p.pHi)]}`}">${p.proj == null ? `<span class="muted">n/a</span>` : meter(p.proj, { lo: p.pLo, hi: p.pHi })}</span>
-    </div>
+    ${seasonStrip(p)}
     <div class="foot"><span><span class="vtag ${p.val}" data-tip="${valueTip(p)}">${p.val === "Unknown" ? "No salary" : p.val}</span> ${confDots(p.min)}</span>
       <button class="save ${saved ? "is-on" : ""}" data-save="${p.id}" aria-label="Save to shortlist">${saved ? "★ Saved" : "☆ Save"}</button></div>
   </article>`;
@@ -151,6 +158,7 @@ function filtered() {
   const by = {
     imp: (a, b) => (b.imp ?? -1) - (a.imp ?? -1) || b.min - a.min,
     proj: (a, b) => (b.proj ?? -1) - (a.proj ?? -1) || (b.imp ?? -1) - (a.imp ?? -1),
+    proj3: (a, b) => (b.fut?.[2]?.p ?? -1) - (a.fut?.[2]?.p ?? -1) || (b.imp ?? -1) - (a.imp ?? -1),
     value: (a, b) => ((b.fair ?? 0) / (b.pay ?? 1e9)) * (b.imp ?? 0) - ((a.fair ?? 0) / (a.pay ?? 1e9)) * (a.imp ?? 0),
     young: (a, b) => a.age - b.age,
   }[state.sort];
@@ -205,7 +213,7 @@ function renderMap(list) {
 function renderClubs() {
   $("#club-grid").innerHTML = TEAMS.map((t) => `<div class="club ${state.club === t.a ? "is-on" : ""}" data-club="${t.a}">
     <div class="ab">${t.a}</div><div class="nm">${esc(t.name)}</div>
-    <div class="mini"><span data-tip="Minutes-weighted squad level">${meter(t.imp)}</span><span data-tip="Bargain contracts in the squad">${t.bargains ? `★ ${t.bargains}` : ""}</span></div></div>`).join("");
+    <div class="mini"><span data-tip="Minutes-weighted squad rating (0-100)">Rating ${rt(t.imp)}</span><span data-tip="Bargain contracts in the squad">${t.bargains ? `★ ${t.bargains}` : ""}</span></div></div>`).join("");
   const t = TEAM_BY.get(state.club);
   if (!t) { $("#club-detail").innerHTML = `<p class="muted">Select a club above.</p>`; return; }
   const squad = PLAYERS.filter((p) => p.t === t.a).sort((a, b) => b.min - a.min);
@@ -265,7 +273,8 @@ function summary(p) {
   s += ". ";
   if (p.val === "Bargain") s += "His contract is well below what this level of play usually earns. ";
   if (p.val === "Premium") s += "He is paid well above what this level of play usually earns. ";
-  if (p.proj != null) s += `Next season: most likely ${TIERS[tier(p.proj)].toLowerCase()}${tier(p.pLo) !== tier(p.pHi) ? ` (range ${TIERS[tier(p.pLo)].toLowerCase()} to ${TIERS[tier(p.pHi)].toLowerCase()})` : ""}.`;
+  if (p.imp != null) s += `Rating ${p.imp} this season. `;
+  if (p.fut) s += `Projected ${p.fut.map((f) => `${f.p} in ${f.y} (range ${f.lo}–${f.hi})`).join(", ")}.`;
   if (conf(p.min) === 1) s += " Small sample so far, so treat this as a first look.";
   return s;
 }
@@ -289,48 +298,54 @@ function addsValuePitch(p) {
   return s + "</svg>";
 }
 
-function seasonsChart(p) {
-  const h = p.hist.filter((d) => d.i != null);
-  if (!h.length) return `<p class="muted">No earlier MLS seasons with 300+ minutes.</p>`;
-  const W = 360, H = 160, years = [2021, 2022, 2023, 2024, 2025, 2026];
-  const x = (s) => 44 + ((W - 64) * (s - 2021)) / 5, y = (v) => 10 + (H - 34) * (1 - v / 100);
+function ratingTimeline(p) {
+  const past = p.hist.filter((d) => d.i != null);
+  const fut = p.fut ?? [];
+  if (!past.length && !fut.length) return `<p class="muted">No rated seasons yet.</p>`;
+  const y0 = SEASON() - 5, y1 = SEASON() + 3;
+  const W = 520, H = 230, L = 34, R = 16, T = 22, B = 30;
+  const x = (yr) => L + ((W - L - R) * (yr - y0)) / (y1 - y0), y = (v) => T + (H - T - B) * (1 - v / 100);
   let s = `<svg viewBox="0 0 ${W} ${H}" style="width:100%;height:auto">`;
   [[90, 100, "#f5c542"], [70, 90, "#3ddc84"], [40, 70, "#9bd3b2"], [20, 40, "#6f8a7c"], [0, 20, "#4a5a52"]].forEach(([a, b, c]) => {
-    s += `<rect x="44" width="${W - 64}" y="${y(b)}" height="${y(a) - y(b)}" fill="${c}" opacity=".10"/>`;
+    s += `<rect x="${L}" width="${W - L - R}" y="${y(b)}" height="${y(a) - y(b)}" fill="${c}" opacity=".08"/>`;
   });
-  [[95, "Elite"], [79, "Strong"], [55, "Solid"], [30, "Dev."], [10, "Weak"]].forEach(([v, l]) => { s += `<text x="40" y="${y(v) + 3}" text-anchor="end" fill="#8eaa9b" font-size="9">${l}</text>`; });
-  years.forEach((yr) => { s += `<text x="${x(yr)}" y="${H - 6}" text-anchor="middle" fill="#8eaa9b" font-size="10">${yr}</text>`; });
-  s += `<polyline fill="none" stroke="#dfeee6" stroke-width="1.5" points="${h.map((d) => `${x(d.s)},${y(d.i)}`).join(" ")}"/>`;
-  h.forEach((d) => { s += `<circle cx="${x(d.s)}" cy="${y(d.i)}" r="${d.min >= 1800 ? 6 : d.min >= 900 ? 4.5 : 3}" fill="#3ddc84" stroke="#07110d" data-tip="${d.s} · ${esc(d.t)} · ${TIERS[tier(d.i)]} (${d.i}th percentile) · ${d.min.toLocaleString()} min"/>`; });
+  [0, 20, 40, 70, 90, 100].forEach((v) => { s += `<text x="${L - 6}" y="${y(v) + 3}" text-anchor="end" fill="#8eaa9b" font-size="10">${v}</text>`; });
+  for (let yr = y0; yr <= y1; yr++) s += `<text x="${x(yr)}" y="${H - 10}" text-anchor="middle" fill="${yr > SEASON() ? "#f5c542" : "#8eaa9b"}" font-size="11" font-weight="${yr === SEASON() ? 700 : 400}">${yr}</text>`;
+  s += `<line x1="${x(SEASON() + 0.5)}" x2="${x(SEASON() + 0.5)}" y1="${T - 8}" y2="${H - B}" stroke="#2a5240" stroke-dasharray="3 3"/>
+    <text x="${x(SEASON() + 0.5) + 4}" y="${T - 10}" fill="#f5c542" font-size="10">projected →</text>`;
+  if (fut.length && p.imp != null) {
+    const band = [[SEASON(), p.imp, p.imp], ...fut.map((f) => [f.y, f.lo, f.hi])];
+    s += `<polygon points="${band.map(([yr, , hi]) => `${x(yr)},${y(hi)}`).join(" ")} ${band.slice().reverse().map(([yr, lo]) => `${x(yr)},${y(lo)}`).join(" ")}" fill="rgba(245,197,66,.13)" stroke="none"/>`;
+    s += `<polyline fill="none" stroke="#f5c542" stroke-width="2" stroke-dasharray="5 4" points="${[[SEASON(), p.imp], ...fut.map((f) => [f.y, f.p])].map(([yr, v]) => `${x(yr)},${y(v)}`).join(" ")}"/>`;
+    fut.forEach((f) => {
+      s += `<g data-tip="${f.y} projection: rating ${f.p}, 80% likely ${f.lo}–${f.hi}"><circle cx="${x(f.y)}" cy="${y(f.p)}" r="5" fill="#07110d" stroke="#f5c542" stroke-width="2"/>
+        <text x="${x(f.y)}" y="${y(f.p) - 10}" text-anchor="middle" fill="#f5c542" font-size="13" font-weight="700">${f.p}</text>
+        <text x="${x(f.y)}" y="${y(f.lo) + 13}" text-anchor="middle" fill="#8eaa9b" font-size="9.5">${f.lo}–${f.hi}</text></g>`;
+    });
+  }
+  if (past.length) s += `<polyline fill="none" stroke="#dfeee6" stroke-width="2" points="${past.map((d) => `${x(d.s)},${y(d.i)}`).join(" ")}"/>`;
+  past.forEach((d) => {
+    s += `<g data-tip="${d.s} · ${esc(d.t)} · rating ${d.i} (${TIERS[tier(d.i)]}) · ${d.min.toLocaleString()} min">
+      <circle cx="${x(d.s)}" cy="${y(d.i)}" r="${d.min >= 1800 ? 6 : d.min >= 900 ? 4.5 : 3}" fill="#3ddc84" stroke="#07110d"/>
+      <text x="${x(d.s)}" y="${y(d.i) - 10}" text-anchor="middle" fill="#eaf4ee" font-size="12" font-weight="700">${d.i}</text></g>`;
+  });
   return s + "</svg>";
 }
 
-function outlook(p) {
-  if (p.proj == null) return `<p class="muted">Projections cover outfield players only.</p>`;
-  const segs = [[0, 20, "#4a5a52"], [20, 40, "#6f8a7c"], [40, 70, "#9bd3b2"], [70, 90, "#3ddc84"], [90, 100, "#f5c542"]];
-  return `<div class="tierscale">${segs.map(([a, b, c]) => `<div class="seg" style="left:${a}%;width:${b - a}%;background:${c};opacity:.55"></div>`).join("")}
-    <div class="band" style="left:${p.pLo}%;width:${Math.max(2, p.pHi - p.pLo)}%" data-tip="80% likely range: ${TIERS[tier(p.pLo)]} to ${TIERS[tier(p.pHi)]}"></div>
-    <div class="pt" style="left:${p.proj}%" data-tip="Most likely: ${TIERS[tier(p.proj)]} (${p.proj}th percentile)"></div>
-    ${p.imp != null ? `<div class="now" style="left:${p.imp}%" data-tip="This season: ${TIERS[tier(p.imp)]}"></div>` : ""}</div>
-    <div class="tierlabels"><span>Weak</span><span>Developing</span><span>Solid</span><span>Strong</span><span>Elite</span></div>
-    <p class="hint" style="margin-top:8px">● this season · ▮ most likely next season · box = 80% likely range. Big seasons usually cool off a little, so the projection leans toward average.</p>`;
-}
-
-function payBars(p) {
+function contractNumbers(p) {
   if (p.pay == null) return `<p class="muted">Not in the April 2026 MLSPA salary release.</p>`;
-  const x = d3.scaleLog().domain([70000, 26000000]).range([0, 100]).clamp(true);
-  return `<div class="paybars">
-    <div class="row"><span>Paid</span><div><div class="bar" style="width:${x(p.pay)}%;background:${p.val === "Premium" ? "#ff6b5e" : "#9bd3b2"}" data-tip="Guaranteed pay ${money(p.pay)} (MLSPA, Apr 2026)"></div></div></div>
-    <div class="row"><span>Plays like</span><div><div class="bar" style="width:${x(p.fair)}%;background:#f5c542" data-tip="Players with this production usually earn about ${money(p.fair)} (model)"></div></div></div>
-    <div class="ticks"><span></span><div><span>Min</span><span>$400K</span><span>$1M</span><span>$3M</span><span>$10M+</span></div></div></div>
-    <p class="hint" style="margin-top:8px">Paid ${PAY_WORDS[payBand(p.pay)]}; production like this usually earns ${PAY_WORDS[payBand(p.fair)]}.</p>`;
+  const ratio = p.fair / p.pay;
+  return `<div class="money">
+    <div><span>Paid (2026)</span><b>${money(p.pay)}</b><small>${PAY_SHORT[payBand(p.pay)]} pay</small></div>
+    <div><span>Production usually earns</span><b class="gold">${money(p.fair)}</b><small>${PAY_SHORT[payBand(p.fair)]} pay</small></div>
+    <div><span>Value</span><b class="${ratio >= 2 ? "gold" : ratio <= 0.5 ? "red" : ""}">${ratio.toFixed(1)}×</b><small>${ratio >= 1 ? "worth more than he costs" : "costs more than his production"}</small></div></div>`;
 }
 
 function openProfile(id) {
   const p = BY_ID.get(id); if (!p) return;
   const team = TEAM_BY.get(p.t), saved = SHORTLIST.includes(p.id);
-  const skillRows = Object.entries(p.sk).map(([k, v]) => `<span>${esc(k)}</span><span data-tip="${v == null ? "n/a" : `Better than ${v}% of ${p.g.toLowerCase()}s`}">${meter(v)}</span><span class="w l${tier(v)}">${TIERS[tier(v)] ?? "n/a"}</span>`).join("");
-  const comps = p.comps.map((c) => `<div class="comp" data-tip="Style similarity ${(c.sim * 100).toFixed(0)}%"><b>${esc(c.n)}</b>${c.s} · ${esc(c.t ?? "")}<div style="margin-top:6px">${meter(c.i)}</div><span class="muted">${TIERS[tier(c.i)] ?? ""} that season</span></div>`).join("");
+  const skillRows = Object.entries(p.sk).map(([k, v]) => `<span>${esc(k)}</span><span data-tip="${v == null ? "n/a" : `Better than ${v}% of ${p.g.toLowerCase()}s`}">${rt(v)}</span><span class="w l${tier(v)}">${TIERS[tier(v)] ?? "n/a"}</span>`).join("");
+  const comps = p.comps.map((c) => `<div class="comp" data-tip="Style similarity ${(c.sim * 100).toFixed(0)}%"><b>${esc(c.n)}</b>${c.s} · ${esc(c.t ?? "")}<div class="comp-rt">${rt(c.i)}</div><span class="muted">rating that season (${TIERS[tier(c.i)] ?? "n/a"})</span></div>`).join("");
   const box = p.g === "Goalkeeper"
     ? `Saves ${p.box.saves} · conceded ${p.box.conceded} · goals prevented vs expected ${p.box.prevented >= 0 ? "+" : ""}${p.box.prevented}`
     : `Goals ${p.box.goals} (xG ${p.box.xg}) · assists ${p.box.assists} (xA ${p.box.xa}) · goals added per 96 min ${p.box.gplus >= 0 ? "+" : ""}${p.box.gplus}`;
@@ -348,13 +363,14 @@ function openProfile(id) {
     <div class="p-grid">
       <div class="box"><h3>Skill shape</h3><p class="hint">Compared with ${p.g.toLowerCase()}s this season. The dashed gold ring is elite.</p>${radarSVG([p], { size: 300, labels: true, pad: 46 })}</div>
       <div class="box"><h3>Skills in words</h3><div class="skill-rows">${skillRows}</div>
-        <h3 style="margin-top:16px">Overall</h3><div class="skill-rows"><span>Now</span><span>${meter(p.imp)}</span><span class="w l${tier(p.imp)}">${TIERS[tier(p.imp)] ?? "n/a"}</span></div></div>
+        <h3 style="margin-top:16px">Overall rating</h3>${seasonStrip(p, true)}</div>
       ${p.ga ? `<div class="box"><h3>Where he adds value</h3><p class="hint">Green adds goals for his team, red costs them, compared with an average ${POS_NAME[p.pos].toLowerCase()}.</p>${addsValuePitch(p)}</div>` : ""}
-      <div class="box"><h3>Level by season</h3><p class="hint">Bigger dots = more minutes that season.</p>${seasonsChart(p)}</div>
-      <div class="box"><h3>Next season outlook</h3>${outlook(p)}</div>
-      <div class="box"><h3>Contract</h3>${payBars(p)}</div>
+      <div class="box"><h3>Contract</h3>${contractNumbers(p)}</div>
     </div>
-    <div class="box" style="margin-top:16px"><h3>Plays like</h3><p class="hint">Closest playing styles in MLS since 2021 (same position), with how good they were that season.</p><div class="comps">${comps}</div></div>
+    <div class="box" style="margin-top:16px"><h3>Rating: last five seasons and next three</h3><p class="hint">Rating 0–100 = better than that % of ${p.g.toLowerCase()}s. White = actual seasons (bigger dot = more minutes). Gold dashed = projection, shaded = 80% likely range; it widens because further seasons are harder to call.</p>${ratingTimeline(p)}</div>
+    <div>
+    </div>
+    <div class="box" style="margin-top:16px"><h3>Plays like</h3><p class="hint">Closest playing styles in MLS since 2015 (same position), with how good they were that season.</p><div class="comps">${comps}</div></div>
     <details class="box" style="margin-top:16px"><summary style="cursor:pointer">For the numbers people</summary><p class="muted" style="margin:8px 0 0">${box} · ${p.min.toLocaleString()} minutes · pay ${money(p.pay)}, typical pay for this production ${money(p.fair)}</p></details>`;
   $("#drawer").hidden = false; $("#profile").scrollTop = 0;
   try { history.replaceState(null, "", `#p=${p.id}`); } catch { /* ignore */ }
@@ -366,20 +382,20 @@ function renderAbout() {
   const r = META.model, pv = r.projection_validation, fs = r.fair_salary_model;
   $("#about").innerHTML = `<h1>How it works</h1>
   <p>Moneyball MLS turns Major League Soccer event data into a scouting board you can read at a glance. Every player in the ${META.season} season with at least ${META.min_minutes} minutes (${META.players} players, ${META.teams} clubs) gets a role, a skill shape, comparable players, a next-season outlook and a contract-value tag.</p>
-  <h2>Levels instead of numbers</h2>
-  <p>Each skill is a percentile against players in the same position group this season (defenders, midfielders, attackers, goalkeepers), shown as five levels: <b style="color:var(--lv5)">Elite</b> (top 10%), <b style="color:var(--lv4)">Strong</b> (top 30%), <b style="color:var(--lv3)">Solid</b> (middle), <b style="color:var(--lv2)">Developing</b> and Weak. Skills come from American Soccer Analysis <i>goals added</i> (g+), which credits every on-ball action with how much it changed the chance of scoring or conceding, plus expected goals and assists. "Now" is total goals added per 96 minutes.</p>
+  <h2>Ratings</h2>
+  <p>Every rating is a number from 0 to 100: the share of players in the same position group this season (defenders, midfielders, attackers, goalkeepers) that the player beats. 89 means better than 89% of them. Colours follow five bands: <b style="color:var(--lv5)">90+ Elite</b>, <b style="color:var(--lv4)">70–89 Strong</b>, <b style="color:var(--lv3)">40–69 Solid</b>, <b style="color:var(--lv2)">20–39 Developing</b>, under 20 Weak. Skills come from American Soccer Analysis <i>goals added</i> (g+), which credits every on-ball action with how much it changed the chance of scoring or conceding, plus expected goals and assists. The overall rating uses total goals added per 96 minutes.</p>
   <h2>The machine-learning models</h2>
   <ul>
-    <li><b>Roles</b>: k-means clustering within each position on a 13-feature style profile (2021–${META.season}, 900+ minute seasons); clusters are named from their centroids, for example ball-playing centre-back vs stopper.</li>
-    <li><b>Plays like</b>: cosine similarity on the same style profile, searching every MLS season since 2021.</li>
-    <li><b>Next season</b>: ridge regression on minutes-weighted, multi-season goals added plus age and style. Tested on unseen seasons against simple baselines:</li>
+    <li><b>Roles</b>: k-means clustering within each position on a 13-feature style profile (2015–${META.season}, 900+ minute seasons); clusters are named from their centroids, for example ball-playing centre-back vs stopper.</li>
+    <li><b>Plays like</b>: cosine similarity on the same style profile, searching every MLS season since 2015.</li>
+    <li><b>Next three seasons</b>: one ridge regression per horizon (${SEASON() + 1}, ${SEASON() + 2}, ${SEASON() + 3}) on minutes-weighted, multi-season goals added plus age and style, trained on MLS 2015–${SEASON() - 1}. Each was tested only on seasons it had not seen:</li>
   </ul>
-  <table><tr><th>Test</th><th>Players</th><th>Model error</th><th>"Same as last season"</th><th>"Shrink to average"</th><th>Rank corr. (model)</th></tr>
-    ${pv.folds.map((f) => `<tr><td>${f.test}</td><td>${f.n}</td><td><b>${f.mae_model}</b></td><td>${f.mae_same_as_last_season}</td><td>${f.mae_shrink_to_average}</td><td>${f.spearman_model}</td></tr>`).join("")}</table>
-  <p class="note">Error = minutes-weighted mean absolute error in goals added per 96 minutes. The 80% range is calibrated on held-out errors (it contained ${Math.round(pv.interval_80_coverage_heldout * 100)}% of real outcomes). Next-season performance is noisy for everyone; the outlook is a guide, not a promise.</p>
+  <table><tr><th>Projection</th><th>Test seasons</th><th>Model error</th><th>"Same as last season"</th><th>"Shrink to average"</th><th>Rank corr.</th><th>80% range hit</th></tr>
+    ${Object.entries(pv.horizons).map(([h, v]) => `<tr><td>${SEASON() + +h} (${h} season${h > 1 ? "s" : ""} ahead)</td><td>${v.folds.length}</td><td><b>${v.mean_mae_model}</b></td><td>${v.mean_mae_same_as_last_season}</td><td>${v.mean_mae_shrink_to_average}</td><td>${v.mean_spearman_model}</td><td>${Math.round(v.interval_80_coverage_heldout * 100)}%</td></tr>`).join("")}</table>
+  <p class="note">Error = minutes-weighted mean absolute error in goals added per 96 minutes, averaged over the test seasons; lower is better. Ranges are calibrated on held-out errors. The further ahead, the weaker the ranking (rank correlation falls), so treat ${SEASON() + 3} as a rough guide. Projections assume the player is still in MLS with regular minutes.</p>
   <ul><li><b>Contract value</b>: a gradient-boosted model (LightGBM) learns what MLS pays for a given level of production, age and position from ${fs.n.toLocaleString()} player-seasons (2021–${META.season}), using out-of-fold predictions grouped by player (R² ${fs.r2_log_oof} on log pay; typical miss ×${fs.median_abs_ratio_error}). <span class="vtag Bargain">Bargain</span> = paid less than half of that and at least solid; <span class="vtag Premium">Premium</span> = paid more than twice that and not elite. ★ Moneyball pick = bargain expected to stay at least solid next season.</li></ul>
   <h2>Data</h2>
-  <p>Player data from the <a href="https://www.americansocceranalysis.com/">American Soccer Analysis</a> public API (xG, xPass, goals added; seasons 2021–${META.season}, ${META.season} season to date). Salaries are guaranteed compensation from the MLS Players Association releases (latest: ${META.salary_release}), as provided by ASA. 30 clubs, including San Diego FC.</p>
+  <p>Player data from the <a href="https://www.americansocceranalysis.com/">American Soccer Analysis</a> public API (xG, xPass, goals added; seasons 2015–${META.season}, ${META.season} season to date). Salaries are guaranteed compensation from the MLS Players Association releases (latest: ${META.salary_release}), as provided by ASA. 30 clubs, including San Diego FC.</p>
   <h2>Know before you use it</h2>
   <ul><li>Event data cannot see off-ball work, pressing intensity, character or injuries. Watch the player.</li>
     <li>Small samples (one hollow dot) swing a lot. Goalkeepers have no next-season projection yet.</li>

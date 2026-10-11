@@ -23,7 +23,7 @@ r0 = lambda v: None if pd.isna(v) else int(round(v))
 r2 = lambda v, k=3: None if pd.isna(v) else round(float(v), k)
 
 
-history = x[x.minutes_played >= MIN_SHOW][["player_id", "season", "pct_Impact", "minutes_played", "team_abbreviation"]]
+history = x[(x.minutes_played >= MIN_SHOW) & (x.season >= CUR - 5)][["player_id", "season", "pct_Impact", "minutes_played", "team_abbreviation"]]
 hist = {pid: [{"s": int(s), "i": r0(i), "min": int(mn), "t": t} for s, i, mn, t in zip(g.season, g.pct_Impact, g.minutes_played, g.team_abbreviation)]
         for pid, g in history.sort_values("season").groupby("player_id")}
 
@@ -42,6 +42,7 @@ for _, r in cur.iterrows():
         "min": int(r.minutes_played), "gp": r0(r.count_games),
         "pay": r0(r.guaranteed_compensation), "fair": r0(r.fair_salary), "val": r.value_tag,
         "imp": r0(r.pct_Impact), "proj": r0(r.pct_proj_mid), "pLo": r0(r.pct_proj_lo), "pHi": r0(r.pct_proj_hi),
+        "fut": None if gk or pd.isna(r.pct_proj1_mid) else [{"y": CUR + h, "p": r0(r[f"pct_proj{h}_mid"]), "lo": r0(r[f"pct_proj{h}_lo"]), "hi": r0(r[f"pct_proj{h}_hi"])} for h in (1, 2, 3)],
         "sk": skills,
         "ga": None if gk else {a: r2(r[f"ga_{a}_p96"]) for a in ACTIONS},
         "box": {"goals": r0(r.goals), "assists": r0(r.primary_assists), "xg": r2(r.xgoals, 1), "xa": r2(r.xassists, 1), "gplus": r2(r.gplus_p96)} if not gk

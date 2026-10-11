@@ -1,15 +1,16 @@
-"""Machine-learning layer: skill percentiles, playing roles, comparable players,
-next-season projection and fair-salary model. Writes data/model_outputs.csv and
+"""Machine-learning layer: skill percentiles (0-100 ratings), playing roles, comparable players,
+projections for the next three seasons and a fair-salary model. Writes data/model_outputs.json and
 data/model_report.json.
 
 Models
-- Roles: k-means per position on a standardized style profile (900+ minute seasons, 2021-2026),
+- Roles: k-means per position on a standardized style profile (900+ minute seasons, 2015-2026),
   clusters named by rule from their centroids.
-- Comparable players: cosine similarity on the same profile, any season 2021-2026.
-- Projection: LightGBM quantile regression (10th / 50th / 90th percentile) of next-season
-  goals added per 96 minutes; trained on season pairs, validated on 2024 -> 2025.
+- Comparable players: cosine similarity on the same profile, any season 2015-2026.
+- Projections: one ridge regression per horizon (1, 2 and 3 seasons ahead) of goals added per 96 minutes,
+  on minutes-shrunk multi-season features and age; rolling validation trains only on pairs whose target
+  season is no later than the forecast season; 80% ranges from held-out residuals by minutes band.
 - Fair salary: LightGBM regression of log guaranteed compensation on on-field production,
-  age and position only; out-of-fold predictions (grouped by player) give the salary the
+  age and position only (2021-2026); out-of-fold predictions (grouped by player) give the salary the
   league typically pays for that production.
 """
 import json
@@ -151,55 +152,68 @@ def add_proj_features(X):
 ACT_COLS = ["ga_passing_p96", "ga_interrupting_p96", "ga_receiving_p96", "ga_shooting_p96", "ga_dribbling_p96", "ga_fouling_p96", "xgoals_p96", "xassists_p96"]
 PROJ_FEATS = ["w_gplus", "age", "age_dev2", "minutes_played", "share_team_touches", "passes_p96"] + [f"s_{c}" for c in ACT_COLS]
 df = add_proj_features(df)
-nxt = df[["player_id", "season", "gplus_p96", "minutes_played"]].rename(columns={"gplus_p96": "next_gplus_p96", "minutes_played": "next_minutes"})
-nxt["season"] -= 1
-pairs = df.merge(nxt, on=["player_id", "season"], how="inner")
-pairs = pairs[(pairs.minutes_played >= 450) & (pairs.next_minutes >= 450) & ~pairs.is_gk]
+HORIZONS = (1, 2, 3)                                            # seasons ahead: 2027, 2028, 2029 from the 2026 season
+MIN_BINS = [0, 1200, 2000, 10000]
+
+
+def make_pairs(h):
+    nxt = df[["player_id", "season", "gplus_p96", "minutes_played"]].rename(columns={"gplus_p96": "next_gplus_p96", "minutes_played": "next_minutes"})
+    nxt["season"] -= h
+    pr = df.merge(nxt, on=["player_id", "season"], how="inner")
+    return pr[(pr.minutes_played >= 450) & (pr.next_minutes >= 450) & ~pr.is_gk]
 
 
 def fit_ridge(train):
     return RidgeCV(alphas=np.logspace(-3, 3, 13)).fit(train[PROJ_FEATS].fillna(0), train.next_gplus_p96, sample_weight=np.sqrt(train.next_minutes))
 
 
-MIN_BINS = [0, 1200, 2000, 10000]
-folds, resid = [], []
-for test in (2022, 2023, 2024):                               # season pair (test, test+1)
-    tr, va = pairs[pairs.season < test], pairs[pairs.season == test]
-    m = fit_ridge(tr); p = m.predict(va[PROJ_FEATS].fillna(0)); w = np.sqrt(va.next_minutes)
-    mae = lambda q: float(np.average(np.abs(va.next_gplus_p96 - q), weights=w))
-    shrink = va.gplus_p96 * va.minutes_played / (va.minutes_played + K)
-    folds.append({"test": f"{test}->{test + 1}", "n": int(len(va)), "mae_model": round(mae(p), 4), "mae_same_as_last_season": round(mae(va.gplus_p96), 4),
-                  "mae_shrink_to_average": round(mae(shrink), 4), "spearman_model": round(float(spearmanr(p, va.next_gplus_p96).statistic), 3),
-                  "spearman_same_as_last_season": round(float(spearmanr(va.gplus_p96, va.next_gplus_p96).statistic), 3)})
-    resid.append(pd.DataFrame({"r": va.next_gplus_p96 - p, "bin": pd.cut(va.minutes_played, MIN_BINS, labels=False)}))
-resid = pd.concat(resid)
-band = resid.groupby("bin").r.quantile([0.1, 0.9]).unstack()
-report = {"projection_validation": {"model": "RidgeCV on minutes-shrunk multi-season features + age", "folds": folds,
-                                    "interval": "80% range from held-out residual quantiles by minutes band"}}
-final = fit_ridge(pairs)
+report = {"projection_validation": {"model": "RidgeCV on minutes-shrunk multi-season features + age, one model per horizon",
+                                    "honest_split": "train only on pairs whose target season is no later than the forecast season",
+                                    "interval": "80% range from held-out residual quantiles by minutes band", "horizons": {}}}
 cur_out = df[(df.season == CUR) & ~df.is_gk]
-mid = final.predict(cur_out[PROJ_FEATS].fillna(0)); b = pd.cut(cur_out.minutes_played, MIN_BINS, labels=False).values
-df.loc[cur_out.index, "proj_mid"] = mid
-df.loc[cur_out.index, "proj_lo"] = mid + band.loc[b, 0.1].values
-df.loc[cur_out.index, "proj_hi"] = mid + band.loc[b, 0.9].values
-# coverage check of the band on the pooled held-out residuals
-report["projection_validation"]["interval_80_coverage_heldout"] = round(float(((resid.r >= band.loc[resid.bin, 0.1].values) & (resid.r <= band.loc[resid.bin, 0.9].values)).mean()), 3)
-coef = pd.Series(final.coef_, index=PROJ_FEATS)
-report["projection_coefficients"] = {k: round(float(v), 4) for k, v in coef.items()}
+for h in HORIZONS:
+    pairs = make_pairs(h)
+    folds, resid = [], []
+    # forecast made at the end of season t for season t+h; train on pairs whose target <= t
+    for t in range(2019, 2026 - h):
+        tr, va = pairs[pairs.season + h <= t], pairs[pairs.season == t]
+        if len(tr) < 300 or not len(va): continue
+        m = fit_ridge(tr); p = m.predict(va[PROJ_FEATS].fillna(0)); w = np.sqrt(va.next_minutes)
+        mae = lambda q: float(np.average(np.abs(va.next_gplus_p96 - q), weights=w))
+        shrink = va.gplus_p96 * va.minutes_played / (va.minutes_played + K)
+        folds.append({"test": f"{t}->{t + h}", "n": int(len(va)), "mae_model": round(mae(p), 4), "mae_same_as_last_season": round(mae(va.gplus_p96), 4),
+                      "mae_shrink_to_average": round(mae(shrink), 4), "spearman_model": round(float(spearmanr(p, va.next_gplus_p96).statistic), 3),
+                      "spearman_same_as_last_season": round(float(spearmanr(va.gplus_p96, va.next_gplus_p96).statistic), 3)})
+        resid.append(pd.DataFrame({"r": va.next_gplus_p96 - p, "bin": pd.cut(va.minutes_played, MIN_BINS, labels=False)}))
+    resid = pd.concat(resid)
+    band = resid.groupby("bin").r.quantile([0.1, 0.9]).unstack()
+    cover = float(((resid.r >= band.loc[resid.bin, 0.1].values) & (resid.r <= band.loc[resid.bin, 0.9].values)).mean())
+    final = fit_ridge(pairs)
+    mid = final.predict(cur_out[PROJ_FEATS].fillna(0)); bins = pd.cut(cur_out.minutes_played, MIN_BINS, labels=False).values
+    df.loc[cur_out.index, f"proj{h}_mid"] = mid
+    df.loc[cur_out.index, f"proj{h}_lo"] = mid + band.loc[bins, 0.1].values
+    df.loc[cur_out.index, f"proj{h}_hi"] = mid + band.loc[bins, 0.9].values
+    avg = lambda k: round(float(np.mean([f[k] for f in folds])), 4)
+    report["projection_validation"]["horizons"][str(h)] = {
+        "target": f"season {CUR + h}", "train_pairs": int(len(pairs)), "folds": folds,
+        "mean_mae_model": avg("mae_model"), "mean_mae_same_as_last_season": avg("mae_same_as_last_season"), "mean_mae_shrink_to_average": avg("mae_shrink_to_average"),
+        "mean_spearman_model": round(float(np.mean([f["spearman_model"] for f in folds])), 3), "interval_80_coverage_heldout": round(cover, 3)}
 
-# projected values -> percentile vs this season's qualified pool of the same group
-for col in ("proj_lo", "proj_mid", "proj_hi"):
-    vals = pd.Series(np.nan, index=df.index)
-    for g, idx in df[df.season == CUR].groupby("group").groups.items():
-        pool = df.loc[idx][qualified.loc[idx]].gplus_p96.dropna().values
-        vals.loc[idx] = df.loc[idx, col].apply(lambda v: np.nan if pd.isna(v) else 100 * (pool < v).mean())
-    df[f"pct_{col}"] = vals
+# projected values -> percentile (0-100) vs this season's qualified pool of the same group
+for h in HORIZONS:
+    for part in ("lo", "mid", "hi"):
+        col = f"proj{h}_{part}"; vals = pd.Series(np.nan, index=df.index)
+        for g, idx in df[df.season == CUR].groupby("group").groups.items():
+            pool = df.loc[idx][qualified.loc[idx]].gplus_p96.dropna().values
+            vals.loc[idx] = df.loc[idx, col].apply(lambda v: np.nan if pd.isna(v) else 100 * (pool < v).mean())
+        df[f"pct_{col}"] = vals
+df["pct_proj_mid"], df["pct_proj_lo"], df["pct_proj_hi"] = df.pct_proj1_mid, df.pct_proj1_lo, df.pct_proj1_hi
 
 # ---------------------------------------------------------------- fair salary (what the league pays for this production)
 SAL_FEATS = ["gplus_p96", "pct_Impact", "xgoals_p96", "xassists_p96", "key_passes_p96", "ga_passing_p96", "ga_interrupting_p96", "ga_receiving_p96",
              "ga_dribbling_p96", "ga_shooting_p96", "share_team_touches", "minutes_played", "count_games", "age", "prev_gplus_p96", "prev_minutes", "pos_code",
              "gk_shotstopping_p96"]
-sal = df[(df.guaranteed_compensation > 0) & (df.minutes_played >= MIN_SHOW)].copy()
+sal = df[(df.guaranteed_compensation > 0) & (df.minutes_played >= MIN_SHOW) & (df.season >= 2021)].copy()
 y = np.log(sal.guaranteed_compensation)
 oof = np.zeros(len(sal))
 for trn, tst in GroupKFold(5).split(sal, y, sal.player_id):
@@ -225,7 +239,7 @@ def value_tag(r):
 
 df["value_tag"] = df.apply(value_tag, axis=1)
 
-out_cols = ["player_id", "season", "role", "comps", "proj_lo", "proj_mid", "proj_hi", "pct_proj_lo", "pct_proj_mid", "pct_proj_hi", "fair_salary", "value_ratio",
+out_cols = ["player_id", "season", "role", "comps", "pct_proj_lo", "pct_proj_mid", "pct_proj_hi"] + [f"pct_proj{h}_{p}" for h in HORIZONS for p in ("lo", "mid", "hi")] + [ "fair_salary", "value_ratio",
             "value_tag", "pct_Impact"] + [f"pct_{k}" for k in {**SKILLS, **GK_SKILLS}]
 df[out_cols].to_json(DATA / "model_outputs.json", orient="records")
 cur = df[(df.season == CUR) & (df.minutes_played >= MIN_SHOW)]

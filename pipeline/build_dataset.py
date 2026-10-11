@@ -1,6 +1,6 @@
 """Join the raw ASA tables into one player-season table: data/player_seasons.csv.
 
-One row per player and season (2021-2026). Rates are per 96 minutes (ASA's convention:
+One row per player and season (2015-2026). Rates are per 96 minutes (ASA's convention:
 90 minutes plus typical stoppage time). Goals added (g+) values are "above average"
 for the player's position, as published by ASA.
 """
@@ -11,7 +11,7 @@ import pandas as pd
 
 ROOT = Path(__file__).resolve().parents[1]
 RAW, OUT = ROOT / "data" / "raw", ROOT / "data"
-SEASONS = range(2021, 2027)
+SEASONS = range(2015, 2027)
 ACTIONS = ["Dribbling", "Fouling", "Interrupting", "Passing", "Receiving", "Shooting"]
 GK_ACTIONS = ["Claiming", "Fielding", "Handling", "Passing", "Shotstopping", "Sweeping"]
 GROUP = {"CB": "Defender", "FB": "Defender", "DM": "Midfielder", "CM": "Midfielder", "AM": "Midfielder",

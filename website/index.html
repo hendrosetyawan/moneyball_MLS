@@ -42,18 +42,19 @@
       <div class="f-block"><label>Sort by</label><select id="sort">
         <option value="imp">Best right now</option>
         <option value="proj">Best next season</option>
+        <option value="proj3">Best in three seasons</option>
         <option value="value">Best value for money</option>
         <option value="young">Youngest first</option>
       </select></div>
       </details>
-      <p class="legend-note">Levels compare a player with others in the same position group this season. Open a player for the full picture; exact numbers only appear on hover or in the profile.</p>
+      <p class="legend-note">Ratings run 0–100: the share of same-position players this season that a player beats. Each card shows this season and the next three.</p>
     </aside>
 
     <main id="main">
       <section class="view is-on" id="view-board">
         <div class="board-head"><h1 id="board-title">Scout board</h1><span id="board-count" class="muted"></span></div>
         <div class="legend">
-          <span><i class="lv lv5"></i>Elite</span><span><i class="lv lv4"></i>Strong</span><span><i class="lv lv3"></i>Solid</span><span><i class="lv lv2"></i>Developing</span><span><i class="lv lv1"></i>Weak</span>
+          <span>Rating 0–100 vs same position:</span><span><b class="rt l5">90+</b> Elite</span><span><b class="rt l4">70–89</b> Strong</span><span><b class="rt l3">40–69</b> Solid</span><span><b class="rt l2">20–39</b> Developing</span><span><b class="rt l1">&lt;20</b> Weak</span>
           <span class="sep"></span><span class="vtag Bargain">Bargain</span><span class="vtag Fair">Fair</span><span class="vtag Premium">Premium</span><span class="star">★ Moneyball pick</span>
         </div>
         <div id="cards" class="cards"></div>
