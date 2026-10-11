@@ -1,6 +1,6 @@
 {
   "hosting": {
-    "site": "moneyball-us-soccer",
+    "site": "moneyball-mls",
     "public": "website",
     "ignore": ["firebase.json", "**/.*", "**/node_modules/**"],
     "headers": [

@@ -1,4 +1,4 @@
-/* Moneyball US Soccer: scouting board for all 30 MLS clubs.
+/* Moneyball MLS: scouting board for all 30 Major League Soccer clubs.
  * Everything a scout sees is a level word, a shape or a colour; exact numbers only appear on hover. */
 
 const $ = (s, el = document) => el.querySelector(s);
@@ -24,8 +24,8 @@ const SKILL_SHORT = { "Finishing": "Finish", "Goal threat": "Threat", "Chance cr
 const state = { pos: new Set(), quick: null, age: null, budget: null, value: null, role: null, club: "", q: "", sort: "imp", shown: 48, compare: [] };
 let PLAYERS = [], TEAMS = [], META = {}, BY_ID = new Map(), TEAM_BY = new Map();
 const store = {
-  get() { try { return JSON.parse(localStorage.getItem("mbus-shortlist") || "[]"); } catch { return []; } },
-  set(ids) { try { localStorage.setItem("mbus-shortlist", JSON.stringify(ids)); } catch { /* storage unavailable */ } },
+  get() { try { return JSON.parse(localStorage.getItem("moneyball-mls-shortlist") || "[]"); } catch { return []; } },
+  set(ids) { try { localStorage.setItem("moneyball-mls-shortlist", JSON.stringify(ids)); } catch { /* storage unavailable */ } },
 };
 let SHORTLIST = store.get();
 
@@ -365,7 +365,7 @@ function closeProfile() { $("#drawer").hidden = true; try { history.replaceState
 function renderAbout() {
   const r = META.model, pv = r.projection_validation, fs = r.fair_salary_model;
   $("#about").innerHTML = `<h1>How it works</h1>
-  <p>Moneyball US Soccer turns MLS event data into a scouting board you can read at a glance. Every player in the ${META.season} season with at least ${META.min_minutes} minutes (${META.players} players, ${META.teams} clubs) gets a role, a skill shape, comparable players, a next-season outlook and a contract-value tag.</p>
+  <p>Moneyball MLS turns Major League Soccer event data into a scouting board you can read at a glance. Every player in the ${META.season} season with at least ${META.min_minutes} minutes (${META.players} players, ${META.teams} clubs) gets a role, a skill shape, comparable players, a next-season outlook and a contract-value tag.</p>
   <h2>Levels instead of numbers</h2>
   <p>Each skill is a percentile against players in the same position group this season (defenders, midfielders, attackers, goalkeepers), shown as five levels: <b style="color:var(--lv5)">Elite</b> (top 10%), <b style="color:var(--lv4)">Strong</b> (top 30%), <b style="color:var(--lv3)">Solid</b> (middle), <b style="color:var(--lv2)">Developing</b> and Weak. Skills come from American Soccer Analysis <i>goals added</i> (g+), which credits every on-ball action with how much it changed the chance of scoring or conceding, plus expected goals and assists. "Now" is total goals added per 96 minutes.</p>
   <h2>The machine-learning models</h2>
@@ -384,7 +384,7 @@ function renderAbout() {
   <ul><li>Event data cannot see off-ball work, pressing intensity, character or injuries. Watch the player.</li>
     <li>Small samples (one hollow dot) swing a lot. Goalkeepers have no next-season projection yet.</li>
     <li>Salary tags do not know about transfer fees, allocation money, roster designations or how a player was acquired.</li></ul>
-  <p class="note">Built by Hendro Setyawan. Code: <a href="https://github.com/hendrosetyawan/moneyball_us_soccer">github.com/hendrosetyawan/moneyball_us_soccer</a>. Not affiliated with MLS, the MLSPA or American Soccer Analysis.</p>`;
+  <p class="note">Built by Hendro Setyawan. Code: <a href="https://github.com/hendrosetyawan/moneyball_MLS">github.com/hendrosetyawan/moneyball_MLS</a>. Not affiliated with MLS, the MLSPA or American Soccer Analysis.</p>`;
 }
 
 // ---------------------------------------------------------------- render loop

@@ -1,8 +1,8 @@
-# Moneyball US Soccer
+# Moneyball MLS
 
 **A machine-learning scouting board for all 30 Major League Soccer clubs.** It shows each player's role, skill shape, comparable players, next-season outlook and contract value as pictures and plain words instead of spreadsheets.
 
-**Live app:** https://moneyball-us-soccer.web.app
+**Live app:** https://moneyball-mls.web.app
 
 ![Scout board](docs/board.png)
 
@@ -58,7 +58,7 @@ python3 pipeline/export_web.py       # -> website/data/*.json
 python3 -m http.server 8000 --directory website
 ```
 
-Deploy: `firebase deploy --only hosting:moneyball-us-soccer --project moneyball-3-1`.
+Deploy: `firebase deploy --only hosting:moneyball-mls --project moneyball-3-1`.
 
 ## Limits
 

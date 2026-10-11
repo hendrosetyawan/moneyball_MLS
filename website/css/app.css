@@ -1,4 +1,4 @@
-/* Moneyball US Soccer · pitch-night theme -------------------------------- */
+/* Moneyball MLS · pitch-night theme -------------------------------- */
 :root {
   --bg: #07110d; --panel: #0d1b15; --panel-2: #12241c; --line: #1d3a2d; --line-2: #2a5240;
   --ink: #eaf4ee; --muted: #8eaa9b; --chalk: #dfeee6;
@@ -208,4 +208,6 @@ main { padding: 18px 22px 60px; min-width: 0; }
   .comps { grid-template-columns: 1fr; }
   main { padding: 14px 14px 50px; }
   .top { padding: 8px 12px; }
+  .brand .us { display: block; line-height: 1.05; }
+  .brand { font-size: 20px; }
 }

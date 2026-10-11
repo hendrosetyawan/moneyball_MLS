@@ -17,7 +17,7 @@ def get(path, **params):
     url = f"{API}/{path}" + (f"?{q}" if q else "")
     for attempt in range(5):
         try:
-            with urllib.request.urlopen(urllib.request.Request(url, headers={"User-Agent": "moneyball_us_soccer (educational)"}), timeout=120) as r:
+            with urllib.request.urlopen(urllib.request.Request(url, headers={"User-Agent": "moneyball_MLS (educational)"}), timeout=120) as r:
                 return json.load(r)
         except Exception as e:  # rate limit or transient error: back off
             wait = 5 * (attempt + 1)
