@@ -1,0 +1,87 @@
+{
+ "projection_validation": {
+  "model": "RidgeCV on minutes-shrunk multi-season features + age",
+  "folds": [
+   {
+    "test": "2022->2023",
+    "n": 372,
+    "mae_model": 0.0419,
+    "mae_same_as_last_season": 0.0484,
+    "mae_shrink_to_average": 0.0424,
+    "spearman_model": 0.436,
+    "spearman_same_as_last_season": 0.423
+   },
+   {
+    "test": "2023->2024",
+    "n": 409,
+    "mae_model": 0.0424,
+    "mae_same_as_last_season": 0.0523,
+    "mae_shrink_to_average": 0.0441,
+    "spearman_model": 0.381,
+    "spearman_same_as_last_season": 0.332
+   },
+   {
+    "test": "2024->2025",
+    "n": 395,
+    "mae_model": 0.0445,
+    "mae_same_as_last_season": 0.0535,
+    "mae_shrink_to_average": 0.0456,
+    "spearman_model": 0.428,
+    "spearman_same_as_last_season": 0.377
+   }
+  ],
+  "interval": "80% range from held-out residual quantiles by minutes band",
+  "interval_80_coverage_heldout": 0.798
+ },
+ "projection_coefficients": {
+  "w_gplus": 0.7566,
+  "age": -0.0011,
+  "age_dev2": 0.0,
+  "minutes_played": -0.0,
+  "share_team_touches": 0.4319,
+  "passes_p96": -0.0,
+  "s_ga_passing_p96": 0.2575,
+  "s_ga_interrupting_p96": -0.2842,
+  "s_ga_receiving_p96": -0.1168,
+  "s_ga_shooting_p96": 0.5661,
+  "s_ga_dribbling_p96": -0.0052,
+  "s_ga_fouling_p96": -0.2632,
+  "s_xgoals_p96": 0.0948,
+  "s_xassists_p96": 0.0002
+ },
+ "fair_salary_model": {
+  "target": "log guaranteed compensation (MLSPA)",
+  "cv": "5-fold grouped by player, 2021-2026",
+  "n": 3783,
+  "r2_log_oof": 0.519,
+  "median_abs_ratio_error": 1.61
+ },
+ "current_season": {
+  "players_shown": 637,
+  "teams": 30,
+  "value_tags": {
+   "Fair": 447,
+   "Premium": 103,
+   "Unknown": 45,
+   "Bargain": 42
+  },
+  "roles": {
+   "Stopper": 85,
+   "Poacher": 69,
+   "Ball winner": 68,
+   "Defensive full-back": 68,
+   "Attacking wing-back": 48,
+   "Direct dribbler": 46,
+   "Ball-playing centre-back": 45,
+   "Box-to-box": 43,
+   "Creative winger": 38,
+   "Inside forward": 33,
+   "Deep playmaker": 24,
+   "Sweeper-keeper": 23,
+   "Shot-stopper": 15,
+   "Link-up striker": 13,
+   "Second striker": 10,
+   "Creator (No. 10)": 9
+  }
+ }
+}

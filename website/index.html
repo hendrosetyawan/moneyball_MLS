@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Moneyball US Soccer · MLS Scouting Board</title>
+  <meta name="description" content="Machine-learning scouting board for all 30 Major League Soccer clubs: player roles, skill shapes, comparable players, next-season outlook and contract value, shown visually instead of in spreadsheets." />
+  <meta property="og:title" content="Moneyball US Soccer" />
+  <meta property="og:description" content="See a player's game at a glance: role, strengths, who he plays like, where he is heading, and whether his contract is a bargain." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="css/app.css" />
+  <script src="https://cdn.jsdelivr.net/npm/d3@7.9.0/dist/d3.min.js"></script>
+</head>
+<body>
+  <header class="top">
+    <div class="brand"><span class="ball">◉</span><div><b>MONEYBALL</b> <span class="us">US SOCCER</span><small>MLS scouting board · 30 clubs · <span id="season-label">2026</span></small></div></div>
+    <nav class="tabs" role="tablist">
+      <button class="tab is-on" data-view="board">Scout board</button>
+      <button class="tab" data-view="map">Value map</button>
+      <button class="tab" data-view="clubs">Clubs</button>
+      <button class="tab" data-view="shortlist">Shortlist <span id="sl-count" class="count">0</span></button>
+      <button class="tab" data-view="about">How it works</button>
+    </nav>
+  </header>
+
+  <div class="layout">
+    <aside class="filters" id="filters">
+      <div class="f-head"><b>Find a player</b><button id="reset" class="link">Reset</button></div>
+      <input id="search" type="search" placeholder="Search name or club…" autocomplete="off" />
+      <div class="f-block">
+        <label>Position <small>tap the pitch</small></label>
+        <svg id="pitch-picker" viewBox="0 0 220 162" role="group" aria-label="Position picker"></svg>
+      </div>
+      <div class="f-block"><label>Quick looks</label><div class="chips" id="quick"></div></div>
+      <details class="more-filters" id="more-filters" open><summary>More filters</summary>
+      <div class="f-block"><label>Age</label><div class="chips" id="age"></div></div>
+      <div class="f-block"><label>Budget</label><div class="chips" id="budget"></div></div>
+      <div class="f-block"><label>Contract value</label><div class="chips" id="value"></div></div>
+      <div class="f-block"><label>Role</label><div class="chips" id="roles"></div></div>
+      <div class="f-block"><label>Club</label><select id="club"><option value="">All 30 clubs</option></select></div>
+      <div class="f-block"><label>Sort by</label><select id="sort">
+        <option value="imp">Best right now</option>
+        <option value="proj">Best next season</option>
+        <option value="value">Best value for money</option>
+        <option value="young">Youngest first</option>
+      </select></div>
+      </details>
+      <p class="legend-note">Levels compare a player with others in the same position group this season. Open a player for the full picture; exact numbers only appear on hover or in the profile.</p>
+    </aside>
+
+    <main id="main">
+      <section class="view is-on" id="view-board">
+        <div class="board-head"><h1 id="board-title">Scout board</h1><span id="board-count" class="muted"></span></div>
+        <div class="legend">
+          <span><i class="lv lv5"></i>Elite</span><span><i class="lv lv4"></i>Strong</span><span><i class="lv lv3"></i>Solid</span><span><i class="lv lv2"></i>Developing</span><span><i class="lv lv1"></i>Weak</span>
+          <span class="sep"></span><span class="vtag Bargain">Bargain</span><span class="vtag Fair">Fair</span><span class="vtag Premium">Premium</span><span class="star">★ Moneyball pick</span>
+        </div>
+        <div id="cards" class="cards"></div>
+        <button id="more" class="more">Show more players</button>
+      </section>
+
+      <section class="view" id="view-map">
+        <div class="board-head"><h1>Value map</h1><span class="muted">Higher = plays better · further left = cheaper. The gold corner is where bargains live.</span></div>
+        <div id="map" class="map"></div>
+      </section>
+
+      <section class="view" id="view-clubs">
+        <div class="board-head"><h1>Clubs</h1><span class="muted">Pick a club to see its likely XI on the pitch and where its value is.</span></div>
+        <div id="club-grid" class="club-grid"></div>
+        <div id="club-detail" class="club-detail"></div>
+      </section>
+
+      <section class="view" id="view-shortlist">
+        <div class="board-head"><h1>Shortlist</h1><span class="muted">Saved on this device. Pick up to three to compare their shapes.</span></div>
+        <div id="compare" class="compare"></div>
+        <div id="sl-cards" class="cards"></div>
+      </section>
+
+      <section class="view" id="view-about">
+        <div id="about" class="about"></div>
+      </section>
+    </main>
+  </div>
+
+  <div id="drawer" class="drawer" hidden><div class="drawer-bg" data-close></div><article class="drawer-panel" id="profile"></article></div>
+  <div id="tip" class="tip" hidden></div>
+  <script type="module" src="js/app.js"></script>
+</body>
+</html>

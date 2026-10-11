@@ -1,0 +1,12 @@
+# raw API cache and rebuildable intermediates (run the pipeline)
+data/raw/
+data/player_seasons.csv
+data/model_outputs.json
+# tooling
+.firebase/
+node_modules/
+__pycache__/
+.DS_Store
+firebase-debug.log
+*.log
+*.pptx

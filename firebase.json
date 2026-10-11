@@ -1,0 +1,11 @@
+{
+  "hosting": {
+    "site": "moneyball-us-soccer",
+    "public": "website",
+    "ignore": ["firebase.json", "**/.*", "**/node_modules/**"],
+    "headers": [
+      { "source": "data/**", "headers": [{ "key": "Cache-Control", "value": "public, max-age=3600" }] },
+      { "source": "**/*.@(js|css)", "headers": [{ "key": "Cache-Control", "value": "public, max-age=600" }] }
+    ]
+  }
+}
