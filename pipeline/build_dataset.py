@@ -1,6 +1,8 @@
-"""Join the raw ASA tables into one player-season table: data/player_seasons.csv.
+"""Join the raw ASA tables into one player-season table: data/player_seasons.csv (MLS), plus
+data/scout_asa_seasons.csv for the scouting leagues with the same metrics (USL Championship, USL League One,
+MLS NEXT Pro; no salaries).
 
-One row per player and season (2015-2026). Rates are per 96 minutes (ASA's convention:
+One row per player and season (MLS 2015-2026). Rates are per 96 minutes (ASA's convention:
 90 minutes plus typical stoppage time). Goals added (g+) values are "above average"
 for the player's position, as published by ASA.
 """
@@ -17,7 +19,9 @@ GK_ACTIONS = ["Claiming", "Fielding", "Handling", "Passing", "Shotstopping", "Sw
 GROUP = {"CB": "Defender", "FB": "Defender", "DM": "Midfielder", "CM": "Midfielder", "AM": "Midfielder",
          "W": "Attacker", "ST": "Attacker", "GK": "Goalkeeper"}
 
-load = lambda name: json.loads((RAW / f"{name}.json").read_text())
+SCOUT_LEAGUES = {"uslc": ("USL Championship", 2017), "usl1": ("USL League One", 2019), "mlsnp": ("MLS NEXT Pro", 2022)}
+_raw = [RAW]
+load = lambda name: json.loads((_raw[0] / f"{name}.json").read_text())
 first = lambda v: v[0] if isinstance(v, list) else v
 
 
@@ -67,11 +71,14 @@ def salaries():
     return pd.concat(rows)
 
 
-if __name__ == "__main__":
-    df = pd.concat([season_table(s) for s in SEASONS], ignore_index=True)
-    players = pd.DataFrame(load("players"))[["player_id", "player_name", "birth_date", "nationality", "height_ft", "height_in", "primary_general_position"]]
+def finish(df):
+    """shared columns: names, position group, age, height, per-96 rates and total goals added"""
+    players = pd.DataFrame(load("players"))
+    for c in ["height_ft", "height_in", "primary_general_position"]:
+        if c not in players: players[c] = np.nan
+    players = players[["player_id", "player_name", "birth_date", "nationality", "height_ft", "height_in", "primary_general_position"]].drop_duplicates("player_id")
     teams = pd.DataFrame(load("teams"))[["team_id", "team_name", "team_short_name", "team_abbreviation"]]
-    df = df.merge(players, on="player_id", how="left").merge(teams, on="team_id", how="left").merge(salaries(), on=["player_id", "season"], how="left")
+    df = df.merge(players, on="player_id", how="left").merge(teams, on="team_id", how="left")
 
     df["general_position"] = df.general_position.fillna(df.primary_general_position)
     df["group"] = df.general_position.map(GROUP)
@@ -89,8 +96,26 @@ if __name__ == "__main__":
     outfield = df.group != "Goalkeeper"
     df["gplus_p96"] = np.where(outfield, df[[f"ga_{a.lower()}_p96" for a in ACTIONS]].sum(axis=1),
                                df[[f"{c}_p96" for c in gk_cols]].sum(axis=1))
-    df = df[df.group.notna() & (df.minutes_played > 0)]
+    return df[df.group.notna() & (df.minutes_played > 0)]
+
+
+def scout_leagues():
+    out = []
+    for lg, (name, first_season) in SCOUT_LEAGUES.items():
+        _raw[0] = RAW / "asa" / lg
+        rows = pd.concat([season_table(s) for s in range(first_season, 2027)], ignore_index=True)
+        rows = finish(rows).assign(league=lg, league_name=name)
+        out.append(rows)
+        print(name, len(rows), "player-seasons")
+    _raw[0] = RAW
+    return pd.concat(out, ignore_index=True)
+
+
+if __name__ == "__main__":
+    df = finish(pd.concat([season_table(s) for s in SEASONS], ignore_index=True))
+    df = df.merge(salaries(), on=["player_id", "season"], how="left")
     df.to_csv(OUT / "player_seasons.csv", index=False)
+    scout_leagues().to_csv(OUT / "scout_asa_seasons.csv", index=False)
     cur = df[df.season == 2026]
     print(len(df), "player-seasons;", len(cur), "in 2026 across", cur.team_id.nunique(), "teams")
     print(df.groupby("season").agg(n=("player_id", "size"), salary=("guaranteed_compensation", lambda s: s.notna().mean()), age=("age", lambda s: s.notna().mean())).round(2))

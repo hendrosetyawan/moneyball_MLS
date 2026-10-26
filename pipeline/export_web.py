@@ -1,4 +1,6 @@
-"""Export compact JSON for the scouting app: website/data/players.json, teams.json, meta.json."""
+"""Export compact JSON for the scouting app: website/data/players.json, teams.json, meta.json, plus the Americas
+scouting pool (targets.json: players outside MLS rated on the MLS scale; leagues.json: league strength and player
+moves; national.json: national-team players of the Americas)."""
 import json
 from pathlib import Path
 import numpy as np
@@ -62,11 +64,46 @@ for a in abbrs:
                   "age": r2((s.age * s.minutes_played).sum() / s.minutes_played.sum(), 1),
                   "imp": r0((s.pct_Impact * s.minutes_played).sum() / s.minutes_played.sum())})
 
+# ---------------------------------------------------------------- Americas scouting pool
+targets = json.loads((DATA / "scouting_outputs.json").read_text())
+extra = json.loads((DATA / "scouting_extra.json").read_text())
+nat = pd.read_csv(DATA / "national_caps.csv")
+links = pd.read_csv(DATA / "id_links.csv").astype({"eid": str})
+nat = nat.astype({"eid": str}).merge(links, on="eid", how="left")
+by_pid = {pid: g for pid, g in nat.dropna(subset=["player_id"]).groupby("player_id")}
+for p in players:                                                   # national-team caps on MLS cards
+    g = by_pid.get(p["id"])
+    p["nt"] = None if g is None else {"nation": g.nation.mode().iloc[0], "apps": int(g.appearances.sum()), "min": int(g.minutes.sum()), "goals": int(g.totalGoals.sum()),
+                                      "comps": [{"c": c, "apps": int(x.appearances.sum()), "min": int(x.minutes.sum()), "g": int(x.totalGoals.sum())} for c, x in g.groupby("competition")]}
+target_by_pid = {t["id"][4:]: t["id"] for t in targets if t["id"].startswith("x:a:")}
+target_by_eid = {t["id"][4:]: t["id"] for t in targets if t["id"].startswith("x:e:")}
+mls_ids = {p["id"] for p in players}
+nations = {}
+for r in extra["national"]:
+    pid = r.get("player_id")
+    link = (pid if pid in mls_ids else None) or (target_by_pid.get(pid) if pid else None) or target_by_eid.get(str(r["eid"]))
+    nations.setdefault(r["nation"], []).append({"n": r["name"], "pos": r.get("pos"), "apps": int(r["apps"]), "min": int(r["min"]), "goals": int(r["goals"]),
+                                                "age": r2((pd.Timestamp(f"{CUR}-07-01") - pd.Timestamp(r["dob"])).days / 365.25, 1) if r.get("dob") else None, "link": link})
+national = [{"nation": k, "players": sorted(v, key=lambda x: -x["min"])} for k, v in sorted(nations.items())]
+# light list for cards and filters; comparables, history and box score load per league when a profile opens
+DETAIL = ("comps", "hist", "box", "tn", "cm", "gp")
+light = [{k: v for k, v in t.items() if k not in DETAIL} | ({"nt": {"nation": t["nt"]["nation"], "apps": t["nt"]["apps"]}} if t.get("nt") else {}) for t in targets]
+(WEB / "targets.json").write_text(json.dumps(light, separators=(",", ":"), ensure_ascii=False))
+(WEB / "targets").mkdir(exist_ok=True)
+for old in (WEB / "targets").glob("*.json"): old.unlink()
+for lg in sorted({t["lg"] for t in targets}):
+    det = {t["id"]: {k: t[k] for k in DETAIL if k in t} | {"nt": t.get("nt")} for t in targets if t["lg"] == lg}
+    (WEB / "targets" / f"{lg}.json").write_text(json.dumps(det, separators=(",", ":"), ensure_ascii=False))
+(WEB / "leagues.json").write_text(json.dumps({"leagues": extra["leagues"], "flows": extra["flows"]}, separators=(",", ":"), ensure_ascii=False))
+(WEB / "national.json").write_text(json.dumps(national, separators=(",", ":"), ensure_ascii=False))
+
 report = json.loads((DATA / "model_report.json").read_text())
 meta = {"season": CUR, "players": len(players), "teams": len(teams), "min_minutes": MIN_SHOW,
         "salary_release": str(d[d.season == CUR].mlspa_release.dropna().max()), "data_through": "ASA API, fetched 2026-10-10",
-        "model": report}
+        "model": report, "scouting": json.loads((DATA / "scouting_report.json").read_text()), "targets": len(targets),
+        "data_sources_scouting": "American Soccer Analysis (USL Championship, USL League One, MLS NEXT Pro), ESPN public soccer data (Liga MX, Brazil, Argentina, Colombia, Chile, Ecuador, Paraguay, Peru, national teams), StatsCrew (Canadian Premier League)"}
 (WEB / "players.json").write_text(json.dumps(players, separators=(",", ":"), ensure_ascii=False))
 (WEB / "teams.json").write_text(json.dumps(teams, separators=(",", ":"), ensure_ascii=False))
 (WEB / "meta.json").write_text(json.dumps(meta, indent=1))
+print(len(targets), "scouting targets,", len(national), "nations;", round((WEB / "targets.json").stat().st_size / 1024), "KB targets")
 print(len(players), "players,", len(teams), "teams;", round((WEB / "players.json").stat().st_size / 1024), "KB")

@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Moneyball MLS · Major League Soccer Scouting Board</title>
-  <meta name="description" content="Machine-learning scouting board for all 30 Major League Soccer clubs: player roles, skill shapes, comparable players, next-season outlook and contract value, shown visually instead of in spreadsheets." />
+  <meta name="description" content="Machine-learning scouting board for all 30 Major League Soccer clubs, plus players from USL, MLS NEXT Pro, Canada, Mexico and South America rated on the same MLS scale: roles, skill shapes, comparable players, outlook and contract value." />
   <meta property="og:title" content="Moneyball MLS · Major League Soccer" />
   <meta property="og:description" content="See a player's game at a glance: role, strengths, who he plays like, where he is heading, and whether his contract is a bargain." />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -14,11 +14,12 @@
 </head>
 <body>
   <header class="top">
-    <div class="brand"><span class="ball">◉</span><div><b>MONEYBALL</b> <span class="us">MAJOR LEAGUE SOCCER</span><small>Scouting board · 30 clubs · <span id="season-label">2026</span></small></div></div>
+    <div class="brand"><span class="ball">◉</span><div><b>MONEYBALL</b> <span class="us">MAJOR LEAGUE SOCCER</span><small>Scouting board · 30 clubs · <span id="season-label">2026</span> · <span id="pool-label">targets from across the Americas</span></small></div></div>
     <nav class="tabs" role="tablist">
       <button class="tab is-on" data-view="board">Scout board</button>
       <button class="tab" data-view="map">Value map</button>
       <button class="tab" data-view="clubs">Clubs</button>
+      <button class="tab" data-view="leagues">Leagues &amp; nations</button>
       <button class="tab" data-view="shortlist">Shortlist <span id="sl-count" class="count">0</span></button>
       <button class="tab" data-view="about">How it works</button>
     </nav>
@@ -27,6 +28,12 @@
   <div class="layout">
     <aside class="filters" id="filters">
       <div class="f-head"><b>Find a player</b><button id="reset" class="link">Reset</button></div>
+      <div class="pool" id="pool" role="radiogroup" aria-label="Scout pool">
+        <button data-pool="mls" class="is-on" role="radio" aria-checked="true">MLS squads</button>
+        <button data-pool="americas" role="radio" aria-checked="false">Americas targets</button>
+        <button data-pool="all" role="radio" aria-checked="false">Both</button>
+      </div>
+      <p class="pool-note" id="pool-note">The 30 MLS squads. Switch to <b>Americas targets</b> to scout USL, MLS NEXT Pro, Canada, Mexico and South America on the same 0–100 MLS scale.</p>
       <input id="search" type="search" placeholder="Search name or club…" autocomplete="off" />
       <div class="f-block">
         <label>Position <small>tap the pitch</small></label>
@@ -35,19 +42,16 @@
       <div class="f-block"><label>Quick looks</label><div class="chips" id="quick"></div></div>
       <details class="more-filters" id="more-filters" open><summary>More filters</summary>
       <div class="f-block"><label>Age</label><div class="chips" id="age"></div></div>
-      <div class="f-block"><label>Budget</label><div class="chips" id="budget"></div></div>
-      <div class="f-block"><label>Contract value</label><div class="chips" id="value"></div></div>
+      <div class="f-block am-only"><label>Region</label><div class="chips" id="region"></div></div>
+      <div class="f-block am-only"><label>League</label><select id="league"><option value="">All leagues</option></select></div>
+      <div class="f-block am-only"><label>Lowest MLS-ready rating</label><div class="chips" id="ready"></div></div>
+      <div class="f-block mls-only"><label>Budget</label><div class="chips" id="budget"></div></div>
+      <div class="f-block mls-only"><label>Contract value</label><div class="chips" id="value"></div></div>
       <div class="f-block"><label>Role</label><div class="chips" id="roles"></div></div>
-      <div class="f-block"><label>Club</label><select id="club"><option value="">All 30 clubs</option></select></div>
-      <div class="f-block"><label>Sort by</label><select id="sort">
-        <option value="imp">Best right now</option>
-        <option value="proj">Best next season</option>
-        <option value="proj3">Best in three seasons</option>
-        <option value="value">Best value for money</option>
-        <option value="young">Youngest first</option>
-      </select></div>
+      <div class="f-block mls-only"><label>Club</label><select id="club"><option value="">All 30 clubs</option></select></div>
+      <div class="f-block"><label>Sort by</label><select id="sort"></select></div>
       </details>
-      <p class="legend-note">Ratings run 0–100: the share of same-position players this season that a player beats. Each card shows this season and the next three.</p>
+      <p class="legend-note">Ratings run 0–100: the share of MLS players in the same position group that a player beats. Americas targets show how they rate in their own league and the rating they would likely have in MLS.</p>
     </aside>
 
     <main id="main">
@@ -55,7 +59,8 @@
         <div class="board-head"><h1 id="board-title">Scout board</h1><span id="board-count" class="muted"></span></div>
         <div class="legend">
           <span>Rating 0–100 vs same position:</span><span><b class="rt l5">90+</b> Elite</span><span><b class="rt l4">70–89</b> Strong</span><span><b class="rt l3">40–69</b> Solid</span><span><b class="rt l2">20–39</b> Developing</span><span><b class="rt l1">&lt;20</b> Weak</span>
-          <span class="sep"></span><span class="vtag Bargain">Bargain</span><span class="vtag Fair">Fair</span><span class="vtag Premium">Premium</span><span class="star">★ Moneyball pick</span>
+          <span class="mls-only legend-tags"><span class="sep"></span><span class="vtag Bargain">Bargain</span><span class="vtag Fair">Fair</span><span class="vtag Premium">Premium</span><span class="star">★ Moneyball pick</span></span>
+          <span class="am-only legend-tags"><span class="sep"></span><span class="lg-tag rg-na">USA &amp; Canada</span><span class="lg-tag rg-mx">Mexico</span><span class="lg-tag rg-sa">South America</span><span class="nt">National team</span></span>
         </div>
         <div id="cards" class="cards"></div>
         <button id="more" class="more">Show more players</button>
@@ -70,6 +75,12 @@
         <div class="board-head"><h1>Clubs</h1><span class="muted">Pick a club to see its likely XI on the pitch and where its value is.</span></div>
         <div id="club-grid" class="club-grid"></div>
         <div id="club-detail" class="club-detail"></div>
+      </section>
+
+      <section class="view" id="view-leagues">
+        <div class="board-head"><h1>Leagues &amp; nations</h1><span class="muted">How strong each league is on the MLS scale, where MLS players come from, and the national-team pools of the Americas.</span></div>
+        <div id="leagues" class="leagues"></div>
+        <div id="nations" class="nations"></div>
       </section>
 
       <section class="view" id="view-shortlist">

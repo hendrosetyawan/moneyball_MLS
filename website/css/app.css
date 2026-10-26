@@ -238,3 +238,44 @@ main { padding: 18px 22px 60px; min-width: 0; }
 .money b { display: block; font-family: var(--head); font-size: 28px; line-height: 1.1; }
 .money b.gold { color: var(--gold); } .money b.red { color: var(--red); }
 .money small { color: var(--muted); font-size: 11px; }
+
+/* ---------------------------------------------------------------- Americas scouting pool */
+.pool { display: grid; grid-template-columns: repeat(3, 1fr); gap: 3px; background: #0b1a13; border: 1px solid #1d3a2d; border-radius: 10px; padding: 3px; margin: 8px 0 6px; }
+.pool button { background: none; border: 0; color: #8eaa9b; font: 600 12px/1.2 Inter, sans-serif; padding: 7px 4px; border-radius: 7px; cursor: pointer; }
+.pool button.is-on { background: #3ddc84; color: #07110d; }
+.pool-note { font-size: 11.5px; color: #8eaa9b; margin: 0 0 10px; line-height: 1.45; }
+body[data-pool="mls"] .am-only, body:not([data-pool="mls"]) .mls-only { display: none; }
+.lg-tag { display: inline-block; font: 700 10px/1 Inter, sans-serif; letter-spacing: .04em; text-transform: uppercase; padding: 3px 6px; border-radius: 4px; vertical-align: 1px; }
+.lg-tag.rg-na { background: rgba(92,200,255,.16); color: #5cc8ff; }
+.lg-tag.rg-mx { background: rgba(61,220,132,.16); color: #3ddc84; }
+.lg-tag.rg-sa { background: rgba(245,197,66,.16); color: #f5c542; }
+.lg-tag.rg-mls { background: rgba(223,238,230,.14); color: #dfeee6; }
+.card.target { border-style: dashed; }
+.seasons.ready { grid-template-columns: 1fr 1.25fr; }
+.seasons.ready .sz.now { background: rgba(245,197,66,.08); border-color: rgba(245,197,66,.4); }
+.nt { display: inline-block; font-size: 10.5px; color: #b69cff; border: 1px solid rgba(182,156,255,.45); border-radius: 999px; padding: 1px 7px; margin-left: 4px; white-space: nowrap; }
+.xi-wrap { display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(260px, 1fr); gap: 16px; align-items: start; }
+.upgrade { background: #0b1a13; border: 1px solid #1d3a2d; border-radius: 12px; padding: 12px 14px; }
+.upgrade h3 { font-family: var(--head); font-size: 20px; margin: 0 0 4px; }
+.upgrade > p { font-size: 12px; margin: 0 0 10px; }
+.up-slot { border-top: 1px solid #1d3a2d; padding: 8px 0; }
+.up-head { font-size: 13px; margin-bottom: 6px; }
+.up-row { display: grid; grid-template-columns: auto 1fr auto auto; gap: 8px; align-items: center; width: 100%; background: none; border: 0; color: #eaf4ee; padding: 4px 2px;
+  font: 500 13px Inter, sans-serif; text-align: left; cursor: pointer; border-radius: 6px; }
+.up-row:hover { background: rgba(61,220,132,.08); }
+.up-n { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.leagues .box svg .lg-row { cursor: pointer; }
+.leagues .box svg .lg-row:hover text { fill: #3ddc84; }
+.nation-chips { margin: 6px 0 12px; flex-wrap: wrap; }
+.nation-chips small { color: #8eaa9b; margin-left: 3px; }
+.nt-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.nt-table th { text-align: left; color: #8eaa9b; font-weight: 600; font-size: 11px; text-transform: uppercase; letter-spacing: .05em; padding: 6px 8px; border-bottom: 1px solid #1d3a2d; }
+.nt-table td { padding: 6px 8px; border-bottom: 1px solid #13281e; }
+.nt-table td.num { text-align: right; font-variant-numeric: tabular-nums; }
+.nt-table tr.link { cursor: pointer; } .nt-table tr.link:hover td { background: rgba(61,220,132,.06); }
+.comp.link { cursor: pointer; } .comp.link:hover { border-color: #3ddc84; }
+@media (max-width: 900px) { .xi-wrap { grid-template-columns: 1fr; } .nt-table { font-size: 12px; } .nt-table th:nth-child(5), .nt-table td:nth-child(5) { display: none; } }
+.legend-tags { display: contents; }
+body[data-pool="mls"] .legend-tags.am-only, body:not([data-pool="mls"]) .legend-tags.mls-only { display: none; }
+body[data-view="about"] .layout, body[data-view="leagues"] .layout { grid-template-columns: 1fr; }
+body[data-view="about"] .filters, body[data-view="leagues"] .filters { display: none; }

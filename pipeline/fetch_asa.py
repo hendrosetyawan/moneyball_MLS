@@ -1,15 +1,20 @@
-"""Fetch MLS player data from the American Soccer Analysis public API into data/raw/ (cached, not committed).
+"""Fetch player data from the American Soccer Analysis public API (cached, not committed).
 
-Seasons 2015-2026, regular season + playoffs combined, one row per player-season (not split by team).
-Usage: python3 pipeline/fetch_asa.py [--refresh]
+MLS seasons 2015-2026 go to data/raw/; the scouting leagues with the same metrics (USL Championship,
+USL League One, MLS NEXT Pro; no salaries) go to data/raw/asa/<league>/. Regular season + playoffs combined,
+one row per player-season (not split by team). Player ids are shared across leagues.
+Usage: python3 pipeline/fetch_asa.py [--refresh] [--league uslc|usl1|mlsnp|all]
 """
 import json, sys, time, urllib.parse, urllib.request
 from pathlib import Path
 
-API = "https://app.americansocceranalysis.com/api/v1/mls"
-RAW = Path(__file__).resolve().parents[1] / "data" / "raw"
-SEASONS = list(range(2015, 2027))
+BASE = "https://app.americansocceranalysis.com/api/v1"
+ROOT_RAW = Path(__file__).resolve().parents[1] / "data" / "raw"
+FIRST = {"mls": 2015, "uslc": 2017, "usl1": 2019, "mlsnp": 2022}
 REFRESH = "--refresh" in sys.argv
+_arg = sys.argv[sys.argv.index("--league") + 1] if "--league" in sys.argv else "mls"
+LEAGUES_TO_FETCH = ["uslc", "usl1", "mlsnp"] if _arg == "all" else [_arg]
+API, RAW, SEASONS = None, None, None
 
 
 def get(path, **params):
@@ -34,7 +39,11 @@ def save(name, fn):
     time.sleep(1.0)
 
 
-if __name__ == "__main__":
+def fetch_league(league):
+    global API, RAW, SEASONS
+    API = f"{BASE}/{league}"
+    RAW = ROOT_RAW if league == "mls" else ROOT_RAW / "asa" / league
+    SEASONS = list(range(FIRST[league], 2027))
     RAW.mkdir(parents=True, exist_ok=True)
     save("teams", lambda: get("teams"))
     save("players", lambda: get("players"))
@@ -45,4 +54,10 @@ if __name__ == "__main__":
         save(f"goals_added_{s}", lambda: get("players/goals-added", **common))
         save(f"gk_goals_added_{s}", lambda: get("goalkeepers/goals-added", **common))
         save(f"gk_xgoals_{s}", lambda: get("goalkeepers/xgoals", **common))
-        save(f"salaries_{s}", lambda: get("players/salaries", season_name=s))
+        if league == "mls":
+            save(f"salaries_{s}", lambda: get("players/salaries", season_name=s))
+
+
+if __name__ == "__main__":
+    for lg in LEAGUES_TO_FETCH:
+        fetch_league(lg)

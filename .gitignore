@@ -2,6 +2,9 @@
 data/raw/
 data/player_seasons.csv
 data/model_outputs.json
+data/role_models.pkl
+data/scout_*.csv
+data/scouting_outputs.json
 # tooling
 .firebase/
 node_modules/
@@ -10,3 +13,6 @@ __pycache__/
 firebase-debug.log
 *.log
 *.pptx
+data/id_links.csv
+data/national_caps.csv
+data/scouting_extra.json

@@ -91,7 +91,7 @@ ROLE_RULES = {
     "GK": (2, [("Sweeper-keeper", lambda z: z.gk_passing_ga_p96 + z.gk_sweeping_p96), ("Shot-stopper", lambda z: 0)]),
 }
 df["role"] = None
-scalers = {}
+scalers, role_models = {}, {}
 for pos, (k, rules) in ROLE_RULES.items():
     feats = GK_STYLE if pos == "GK" else STYLE
     rows = df[(df.pos == pos)].dropna(subset=feats)
@@ -103,6 +103,7 @@ for pos, (k, rules) in ROLE_RULES.items():
     for name, score in rules:
         best = max(free, key=lambda c: score(cent.loc[c])); names[best] = name; free.discard(best)
     df.loc[rows.index, "role"] = [names[c] for c in km.predict(sc.transform(rows[feats]))]
+    role_models[pos] = {"scaler": sc, "feats": feats, "kmeans": km, "names": names}
 
 # ---------------------------------------------------------------- comparable players (cosine, same position, any season)
 df["comps"] = None
@@ -246,4 +247,6 @@ cur = df[(df.season == CUR) & (df.minutes_played >= MIN_SHOW)]
 report["current_season"] = {"players_shown": int(len(cur)), "teams": int(cur.team_id.nunique()), "value_tags": cur.value_tag.value_counts().to_dict(),
                             "roles": cur.role.value_counts().to_dict()}
 (DATA / "model_report.json").write_text(json.dumps(report, indent=1))
+import pickle
+(DATA / "role_models.pkl").write_bytes(pickle.dumps(role_models))   # reused by train_scouting.py for non-MLS players
 print(json.dumps(report, indent=1))

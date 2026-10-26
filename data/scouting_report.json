@@ -1,0 +1,114 @@
+{
+ "same_metric_leagues": {
+  "model": "RidgeCV, one model for USL Championship, USL League One and MLS NEXT Pro (league terms and league x goals-added slopes)",
+  "target": "MLS goals added per 96 minutes in the next season",
+  "validation": "5-fold, grouped by player (no player in both train and test)",
+  "movers": 362,
+  "movers_by_league": {
+   "mlsnp": 180,
+   "uslc": 162,
+   "usl1": 20
+  },
+  "mae_model": 0.0487,
+  "mae_same_goals_added_as_lower_league": 0.0831,
+  "mae_league_average_of_movers": 0.0508,
+  "spearman_model": 0.277,
+  "spearman_lower_league_goals_added": 0.291,
+  "rating_mae_points": 24.8,
+  "interval_80_coverage_heldout": 0.796
+ },
+ "box_score_to_goals_added": {
+  "basic": {
+   "n": 2044,
+   "r2_oof": 0.368,
+   "spearman_oof": 0.517,
+   "features": 10,
+   "cv": "5-fold grouped by player, MLS 2023-2026, outfield, 450+ minutes"
+  },
+  "rich": {
+   "n": 1030,
+   "r2_oof": 0.452,
+   "spearman_oof": 0.599,
+   "features": 23,
+   "cv": "5-fold grouped by player, MLS 2023-2026, outfield, 450+ minutes"
+  }
+ },
+ "box_score_method_choice": {
+  "relative to own league + results strength": {
+   "mae": 0.0558,
+   "kappa": 0.14,
+   "spearman": 0.343
+  },
+  "raw production + results strength": {
+   "mae": 0.0528,
+   "kappa": 0.105,
+   "spearman": 0.395
+  },
+  "chosen": "raw production + results strength"
+ },
+ "box_score_calibration": {
+  "rows": 1078,
+  "source": "MLS consecutive seasons 2023-2026 (box score in season t, goals added in t+1)",
+  "spearman_oof": 0.295,
+  "interval_80_coverage_mls_heldout": 0.798,
+  "range_widening_for_movers": 1.0,
+  "stat_sets": 6
+ },
+ "box_score_leagues": {
+  "league_strength": "team ratings from 2023-2026 results (domestic leagues + Leagues Cup, Concacaf Champions Cup, Libertadores, Sudamericana, Club World Cup), league = average club rating 2025-2026; scaled to goals added by one factor fitted on movers into MLS",
+  "matches": 18256,
+  "kappa": 0.105,
+  "strength_goals_per_match_vs_mls": {
+   "arg.1": 0.173,
+   "arg.2": -0.187,
+   "bra.1": 0.336,
+   "bra.2": -0.14,
+   "can.1": -0.588,
+   "chi.1": -0.097,
+   "col.1": -0.121,
+   "ecu.1": -0.041,
+   "mex.1": -0.064,
+   "par.1": -0.12,
+   "per.1": -0.21,
+   "usa.1": 0.0
+  },
+  "box_score_network_offsets_not_used": {
+   "usa.1": 0.0,
+   "arg.1": 0.0069,
+   "arg.2": 0.0028,
+   "bra.1": 0.0154,
+   "bra.2": 0.0058,
+   "can.1": 0.003,
+   "chi.1": -0.0125,
+   "col.1": -0.0053,
+   "ecu.1": -0.0013,
+   "mex.1": 0.0071,
+   "par.1": 0.0168,
+   "per.1": -0.0001
+  },
+  "pairs": 6797,
+  "cross_league_pairs": 952,
+  "movers_into_mls": 49,
+  "movers_by_league": {
+   "bra.1": 16,
+   "arg.1": 13,
+   "col.1": 7,
+   "ecu.1": 4,
+   "mex.1": 4,
+   "par.1": 2,
+   "bra.2": 1,
+   "chi.1": 1,
+   "arg.2": 1
+  },
+  "validation": "each mover into MLS left out of the league-strength fit, then predicted (calibration comes from MLS players only)",
+  "mae_model": 0.0528,
+  "mae_without_league_strength": 0.0548,
+  "mae_league_average_of_movers": 0.0499,
+  "mae_mls_average": 0.054,
+  "spearman_model": 0.395,
+  "spearman_box_score_only": 0.415,
+  "spearman_without_league_strength": 0.414,
+  "rating_mae_points": 24.4,
+  "interval_80_coverage_heldout": 0.776
+ }
+}
